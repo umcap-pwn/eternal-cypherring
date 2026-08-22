@@ -1,6 +1,12 @@
 [package]
-name = "cli"
+name = "etc"
 version = "0.1.0"
 edition = "2024"
 
+[[bin]]
+name = "etc"
+path = "src/main.rs"
+
 [dependencies]
+libloading = "0.8"
+lexopt = "0.3"

@@ -1,14 +1,20 @@
-pub fn add(left: u64, right: u64) -> u64 {
-    left + right
+#[repr(C)]
+pub struct ConstBuffer {
+    pub data: *const u8,
+    pub size: usize,
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
+#[repr(C)]
+pub struct MutBuffer {
+    pub data: *mut u8,
+    pub size: usize,
 }
+
+#[repr(C)]
+pub struct AlgorithmInfo {
+    pub algorithm_name: *const u8,
+    pub key_size: usize,
+}
+
+// AlgorithmInfo is a fully immutable so sharing is safe
+unsafe impl Sync for AlgorithmInfo {}

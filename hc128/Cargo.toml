@@ -3,4 +3,8 @@ name = "hc128"
 version = "0.1.0"
 edition = "2024"
 
+[lib]
+crate-type = ["cdylib"]
+
 [dependencies]
+common = { path = "../common"}
