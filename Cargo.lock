@@ -3,5 +3,25 @@
 version = 4
 
 [[package]]
-name = "eternal-cypherring"
+name = "cli"
+version = "0.1.0"
+
+[[package]]
+name = "common"
+version = "0.1.0"
+
+[[package]]
+name = "hc128"
+version = "0.1.0"
+
+[[package]]
+name = "rc4"
+version = "0.1.0"
+
+[[package]]
+name = "tests"
+version = "0.1.0"
+
+[[package]]
+name = "trivium"
 version = "0.1.0"

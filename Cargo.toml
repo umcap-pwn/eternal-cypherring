@@ -1,6 +1,10 @@
-[package]
-name = "eternal-cypherring"
-version = "0.1.0"
-edition = "2024"
-
-[dependencies]
+[workspace]
+members = [
+        "cli",
+        "tests",
+        "common",
+        "rc4",
+        "trivium",
+        "hc128",
+]
+resolver = "2"
