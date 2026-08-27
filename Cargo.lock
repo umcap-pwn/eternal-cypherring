@@ -16,6 +16,8 @@ version = "0.1.0"
 name = "etc"
 version = "0.1.0"
 dependencies = [
+ "common",
+ "getrandom",
  "lexopt",
  "libloading",
 ]

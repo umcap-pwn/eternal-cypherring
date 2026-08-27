@@ -1,7 +1,15 @@
-// mod loader;
+mod loader;
+use getrandom;
 use lexopt::Arg::*;
 use lexopt::ValueExt;
+use loader::*;
+use std::error::Error;
+use std::io::Read;
+use std::io::Write;
 use std::path::PathBuf;
+use std::result;
+
+use crate::KeySource::File;
 
 struct Args {
     algorithm: String,
@@ -38,10 +46,78 @@ fn main() {
     match parse_args() {
         Err(e) => {
             eprintln!("error: {e}");
+            std::process::exit(1);
         }
         Ok(None) => print_help(),
-        Ok(Some(args)) => todo!(),
+        Ok(Some(args)) => {
+            if let Err(e) = dispatch(args) {
+                eprintln!("error: {e}");
+                std::process::exit(1);
+            }
+        }
     }
+}
+
+fn dispatch(args: Args) -> Result<(), Box<dyn Error>> {
+    match args.mode {
+        Mode::GenerateKey => generate_key(&args),
+        Mode::Encrypt => run_crypto(&args, true),
+        Mode::Decrypt => run_crypto(&args, false),
+    }
+}
+
+fn generate_key(args: &Args) -> Result<(), Box<dyn Error>> {
+    let cipher = loader::load_algorithm(&args.algorithm)?;
+    let key_len = cipher.symbol::<usize>(b"key_size")?;
+    let mut key = vec![0u8; *key_len];
+    getrandom::fill(&mut key)?;
+    if let Some(path) = &args.save_key {
+        std::fs::write(path, key)?;
+    }
+    Ok(())
+}
+
+fn run_crypto(args: &Args, encrypt: bool) -> Result<(), Box<dyn Error>> {
+    let cipher = loader::load_algorithm(&args.algorithm)?;
+    let key = match &args.key_source {
+        KeySource::File(path) => std::fs::read(path)?,
+        KeySource::Stdin => {
+            let key_len = cipher.key_size()?;
+            let mut key = vec![0u8; key_len];
+            std::io::stdin().read_exact(&mut key)?;
+            key
+        }
+        KeySource::Generate => {
+            let key_len = cipher.key_size()?;
+            let mut key = vec![0u8; key_len];
+            getrandom::fill(&mut key)?;
+            key
+        }
+    };
+
+    let input = match &args.input {
+        DataSource::File(path) => std::fs::read(path)?,
+        DataSource::Stdin => {
+            let mut input = Vec::new();
+            std::io::stdin().read_to_end(&mut input)?;
+            input
+        }
+    };
+
+    let res = if (encrypt) {
+        cipher.encrypt(&key, &input)
+    } else {
+        cipher.decrypt(&key, &input)
+    }?;
+
+    match &args.output {
+        DataDest::File(path) => std::fs::write(path, res)?,
+        DataDest::Stdout => {
+            std::io::stdout().write_all(&res)?;
+        }
+    };
+
+    Ok(())
 }
 
 fn parse_args() -> Result<Option<Args>, lexopt::Error> {
@@ -83,6 +159,7 @@ fn parse_args() -> Result<Option<Args>, lexopt::Error> {
             _ => return Ok(None),
         };
     }
+
     let ret = Args {
         algorithm: algorithm.unwrap(),
         mode: mode.unwrap(),
