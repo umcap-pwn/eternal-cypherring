@@ -20,7 +20,8 @@ pub struct Cipher {
 
 impl Cipher {
     pub fn load<P: AsRef<Path>>(path: P) -> Result<Self, Box<dyn Error>> {
-        let library = unsafe { Library::new(path.as_ref().as_os_str())? };
+        let path = path.as_ref().canonicalize()?;
+        let library = unsafe { Library::new(path.as_os_str())? };
 
         unsafe {
             library.get::<GetOutputSizeFn>(b"get_output_size")?;
@@ -32,6 +33,7 @@ impl Cipher {
         Ok(Self { library })
     }
 
+    #[allow(unused)]
     pub fn algorithm_name(&self) -> Result<String, Box<dyn Error>> {
         let info = self.info()?;
         if info.algorithm_name.is_null() {
@@ -120,7 +122,7 @@ pub fn load_algorithm(name: &str) -> Result<Cipher, Box<dyn Error>> {
     let mut candidates = vec![PathBuf::from(&filename)];
     candidates.push(PathBuf::from("target/debug").join(&filename));
     candidates.push(PathBuf::from("target/release").join(&filename));
-    candidates.push(PathBuf::from("./").join(&filename));
+    // candidates.push(PathBuf::from(format!("./{filename}")));
 
     for path in candidates {
         if path.exists() {

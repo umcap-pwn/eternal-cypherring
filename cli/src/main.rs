@@ -2,14 +2,12 @@ mod loader;
 use getrandom;
 use lexopt::Arg::*;
 use lexopt::ValueExt;
-use loader::*;
+use loader::Cipher;
 use std::error::Error;
+use std::io::IsTerminal;
 use std::io::Read;
 use std::io::Write;
 use std::path::PathBuf;
-use std::result;
-
-use crate::KeySource::File;
 
 struct Args {
     algorithm: String,
@@ -20,6 +18,7 @@ struct Args {
     save_key: Option<PathBuf>,
 }
 
+#[derive(PartialEq, Eq)]
 enum Mode {
     Encrypt,
     Decrypt,
@@ -28,7 +27,7 @@ enum Mode {
 
 enum KeySource {
     File(PathBuf),
-    Stdin,
+    //     Stdin,
     Generate,
 }
 
@@ -60,51 +59,57 @@ fn main() {
 
 fn dispatch(args: Args) -> Result<(), Box<dyn Error>> {
     match args.mode {
-        Mode::GenerateKey => generate_key(&args),
+        Mode::GenerateKey => {
+            let cipher = loader::load_algorithm(&args.algorithm)?;
+            let key = generate_key(&cipher)?;
+            write_key(&args, &key)?;
+            Ok(())
+        }
         Mode::Encrypt => run_crypto(&args, true),
         Mode::Decrypt => run_crypto(&args, false),
     }
 }
 
-fn generate_key(args: &Args) -> Result<(), Box<dyn Error>> {
-    let cipher = loader::load_algorithm(&args.algorithm)?;
-    let key_len = cipher.symbol::<usize>(b"key_size")?;
-    let mut key = vec![0u8; *key_len];
-    getrandom::fill(&mut key)?;
-    if let Some(path) = &args.save_key {
-        std::fs::write(path, key)?;
+fn write_key(args: &Args, key: &[u8]) -> Result<(), Box<dyn Error>> {
+    match &args.save_key {
+        Some(path) => std::fs::write(path, key)?,
+        None => todo!("Key input/output via stdin is not implemented yet! Use files."),
     }
     Ok(())
 }
 
+fn generate_key(cipher: &Cipher) -> Result<Vec<u8>, Box<dyn Error>> {
+    let mut key = vec![0u8; cipher.key_size()?];
+    getrandom::fill(&mut key)?;
+    Ok(key)
+}
+
 fn run_crypto(args: &Args, encrypt: bool) -> Result<(), Box<dyn Error>> {
     let cipher = loader::load_algorithm(&args.algorithm)?;
+
+    let key_size = cipher.key_size()?;
     let key = match &args.key_source {
         KeySource::File(path) => std::fs::read(path)?,
-        KeySource::Stdin => {
-            let key_len = cipher.key_size()?;
-            let mut key = vec![0u8; key_len];
-            std::io::stdin().read_exact(&mut key)?;
-            key
-        }
-        KeySource::Generate => {
-            let key_len = cipher.key_size()?;
-            let mut key = vec![0u8; key_len];
-            getrandom::fill(&mut key)?;
-            key
-        }
+        KeySource::Generate => generate_key(&cipher)?,
     };
+    assert!(
+        key.len() == key_size,
+        "Provided key is not valid: expected {} bytes, found {}",
+        key_size,
+        key.len()
+    );
 
     let input = match &args.input {
         DataSource::File(path) => std::fs::read(path)?,
         DataSource::Stdin => {
+            println!("Enter text to encrypt, then press ^D to continue: ");
             let mut input = Vec::new();
             std::io::stdin().read_to_end(&mut input)?;
             input
         }
     };
 
-    let res = if (encrypt) {
+    let res = if encrypt {
         cipher.encrypt(&key, &input)
     } else {
         cipher.decrypt(&key, &input)
@@ -112,15 +117,13 @@ fn run_crypto(args: &Args, encrypt: bool) -> Result<(), Box<dyn Error>> {
 
     match &args.output {
         DataDest::File(path) => std::fs::write(path, res)?,
-        DataDest::Stdout => {
-            std::io::stdout().write_all(&res)?;
-        }
+        DataDest::Stdout => write_output(&args, &res)?,
     };
 
     Ok(())
 }
 
-fn parse_args() -> Result<Option<Args>, lexopt::Error> {
+fn parse_args() -> Result<Option<Args>, Box<dyn Error>> {
     let mut parser = lexopt::Parser::from_env();
 
     let mut algorithm: Option<String> = None;
@@ -160,19 +163,84 @@ fn parse_args() -> Result<Option<Args>, lexopt::Error> {
         };
     }
 
+    let algorithm = algorithm.ok_or("missing required option --algorithm")?;
+    let mode = mode.ok_or("missing required option --mode")?;
+
     let ret = Args {
-        algorithm: algorithm.unwrap(),
-        mode: mode.unwrap(),
-        key_source: key_source.unwrap_or(KeySource::Stdin),
+        // TODO: wrong args handling
+        algorithm: algorithm,
+        mode: mode,
+        key_source: key_source.unwrap_or(KeySource::Generate),
         input: input.unwrap_or(DataSource::Stdin),
         output: output.unwrap_or(DataDest::Stdout),
         save_key,
     };
+    validate(&ret)?;
     Ok(Some(ret))
 }
 
 fn validate(args: &Args) -> Result<(), String> {
-    todo!()
+    if args.algorithm.is_empty() {
+        return Err("--algorithm must not be empty".to_string());
+    }
+
+    match &args.mode {
+        Mode::GenerateKey => {
+            if args.save_key.is_none() {
+                return Err("--mode gen-key requires --save-key <FILE>".to_string());
+            }
+        }
+        Mode::Encrypt | Mode::Decrypt => {
+            if let KeySource::Generate = &args.key_source {
+                if args.save_key.is_none() {
+                    return Err("--save-key <FILE> is required when generating a key".to_string());
+                }
+            }
+        }
+    }
+
+    Ok(())
 }
 
-fn print_help() {}
+fn print_help() {
+    println!(
+        "\
+        eternal-cypherring — educational stream cipher CLI
+
+        Usage:
+          etc -a <ALGORITHM> -m <MODE> [OPTIONS]
+
+        Options:
+          -a, --algorithm <ALGORITHM>   Cipher to use: rc4, trivium, hc128
+          -m, --mode <MODE>             Mode: encrypt, decrypt, gen-key
+          -k, --key <FILE>              Read key from FILE (default: stdin)
+          -i, --input <FILE>            Read input from FILE (default: stdin)
+          -o, --output <FILE>           Write output to FILE (default: stdout)
+          -s, --save-key <FILE>         Write generated key to FILE
+          -h, --help                    Show this help
+
+        Examples:
+          etc -a rc4 -m gen-key -s key.bin
+          etc -a rc4 -m encrypt -k key.bin -i plain.txt -o cipher.bin
+          etc -a rc4 -m decrypt -k key.bin -i cipher.bin -o plain.dec
+"
+    )
+}
+
+fn write_output(args: &Args, data: &[u8]) -> Result<(), Box<dyn Error>> {
+    match &args.output {
+        DataDest::File(path) => {
+            std::fs::write(path, data)?;
+        }
+        DataDest::Stdout => {
+            let stdout = std::io::stdout();
+            if stdout.is_terminal() && !(args.mode == Mode::Decrypt) {
+                return Err(
+                    "refusing to write binary data to a terminal; use -o FILE or redirect".into(),
+                );
+            }
+            stdout.lock().write_all(data)?;
+        }
+    }
+    Ok(())
+}
