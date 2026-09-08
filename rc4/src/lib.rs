@@ -34,7 +34,6 @@ pub unsafe extern "C" fn encrypt(
 
     let mut salt = [0u8; RC4_IV_SIZE];
     getrandom::fill(&mut salt).expect("Error getting random value");
-    assert_eq!(salt.len(), RC4_IV_SIZE);
 
     let temp = [&mut salt, key].concat();
     let mut s = ksa(&temp);
