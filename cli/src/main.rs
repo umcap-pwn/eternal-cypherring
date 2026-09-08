@@ -87,18 +87,6 @@ fn generate_key(cipher: &Cipher) -> Result<Vec<u8>, Box<dyn Error>> {
 fn run_crypto(args: &Args, encrypt: bool) -> Result<(), Box<dyn Error>> {
     let cipher = loader::load_algorithm(&args.algorithm)?;
 
-    let key_size = cipher.key_size()?;
-    let key = match &args.key_source {
-        KeySource::File(path) => std::fs::read(path)?,
-        KeySource::Generate => generate_key(&cipher)?,
-    };
-    assert!(
-        key.len() == key_size,
-        "Provided key is not valid: expected {} bytes, found {}",
-        key_size,
-        key.len()
-    );
-
     let input = match &args.input {
         DataSource::File(path) => std::fs::read(path)?,
         DataSource::Stdin => {
@@ -108,6 +96,22 @@ fn run_crypto(args: &Args, encrypt: bool) -> Result<(), Box<dyn Error>> {
             input
         }
     };
+
+    let key_size = cipher.key_size()?;
+    let key = match &args.key_source {
+        KeySource::File(path) => std::fs::read(path)?,
+        KeySource::Generate => {
+            let t = generate_key(&cipher)?;
+            write_key(args, &t)?;
+            t
+        }
+    };
+    assert!(
+        key.len() == key_size,
+        "Provided key is not valid: expected {} bytes, found {}",
+        key_size,
+        key.len()
+    );
 
     let res = if encrypt {
         cipher.encrypt(&key, &input)
@@ -173,7 +177,7 @@ fn parse_args() -> Result<Option<Args>, Box<dyn Error>> {
         key_source: key_source.unwrap_or(KeySource::Generate),
         input: input.unwrap_or(DataSource::Stdin),
         output: output.unwrap_or(DataDest::Stdout),
-        save_key,
+        save_key: save_key,
     };
     validate(&ret)?;
     Ok(Some(ret))
