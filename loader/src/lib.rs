@@ -1,4 +1,3 @@
-// loader.rs
 use std::error::Error;
 use std::ffi::{CStr, c_char};
 use std::path::{Path, PathBuf};
@@ -33,7 +32,6 @@ impl Cipher {
         Ok(Self { library })
     }
 
-    #[allow(unused)]
     pub fn algorithm_name(&self) -> Result<String, Box<dyn Error>> {
         let info = self.info()?;
         if info.algorithm_name.is_null() {
@@ -114,7 +112,7 @@ impl Cipher {
 
 pub fn load_algorithm(name: &str) -> Result<Cipher, Box<dyn Error>> {
     let direct = Path::new(name);
-    if direct.exists() {
+    if direct.is_file() {
         return Cipher::load(direct);
     }
 
@@ -122,10 +120,20 @@ pub fn load_algorithm(name: &str) -> Result<Cipher, Box<dyn Error>> {
     let mut candidates = vec![PathBuf::from(&filename)];
     candidates.push(PathBuf::from("target/debug").join(&filename));
     candidates.push(PathBuf::from("target/release").join(&filename));
-    // candidates.push(PathBuf::from(format!("./{filename}")));
+
+    // Locate libraries next to the running executable as well, so the CLI and
+    // the test harness do not depend on the current working directory.
+    if let Ok(exe) = std::env::current_exe()
+        && let Some(dir) = exe.parent()
+    {
+        candidates.push(dir.join(&filename));
+        if let Some(parent) = dir.parent() {
+            candidates.push(parent.join(&filename));
+        }
+    }
 
     for path in candidates {
-        if path.exists() {
+        if path.is_file() {
             return Cipher::load(path);
         }
     }

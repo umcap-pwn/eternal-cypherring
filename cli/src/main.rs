@@ -1,4 +1,3 @@
-mod loader;
 use getrandom;
 use lexopt::Arg::*;
 use lexopt::ValueExt;

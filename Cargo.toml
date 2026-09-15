@@ -3,6 +3,7 @@ members = [
         "cli",
         "tests",
         "common",
+        "loader",
         "rc4",
         "trivium",
         "hc128",

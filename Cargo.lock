@@ -16,10 +16,9 @@ version = "0.1.0"
 name = "etc"
 version = "0.1.0"
 dependencies = [
- "common",
  "getrandom",
  "lexopt",
- "libloading",
+ "loader",
 ]
 
 [[package]]
@@ -64,6 +63,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "loader"
+version = "0.1.0"
+dependencies = [
+ "common",
+ "libloading",
+]
+
+[[package]]
 name = "r-efi"
 version = "6.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -80,6 +87,9 @@ dependencies = [
 [[package]]
 name = "tests"
 version = "0.1.0"
+dependencies = [
+ "loader",
+]
 
 [[package]]
 name = "trivium"

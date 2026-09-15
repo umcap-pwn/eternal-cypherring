@@ -8,7 +8,6 @@ name = "etc"
 path = "src/main.rs"
 
 [dependencies]
-libloading = "0.8"
 lexopt = "0.3"
 getrandom = "0.4.3"
-common = { path = "../common" }
+loader = { path = "../loader" }

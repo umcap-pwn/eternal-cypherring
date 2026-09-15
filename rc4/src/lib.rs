@@ -6,8 +6,11 @@ const RC4_IV_SIZE: usize = 16;
 const S_BOX_SIZE: usize = 256;
 
 #[unsafe(no_mangle)] // Safe to use; no edgecases
-pub extern "C" fn get_output_size(input_size: usize, _operation_type: i32) -> usize {
-    input_size + RC4_IV_SIZE
+pub extern "C" fn get_output_size(input_size: usize, operation_type: i32) -> usize {
+    match operation_type {
+        0 => input_size + RC4_IV_SIZE,
+        _ => input_size - RC4_IV_SIZE,
+    }
 }
 
 #[unsafe(no_mangle)]
@@ -95,68 +98,4 @@ fn prga(s: &mut [u8; S_BOX_SIZE], data: &[u8]) -> Vec<u8> {
         res.push(byte ^ s[t]);
     }
     res
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn run_encrypt(key: &[u8], input: &[u8]) -> Vec<u8> {
-        let mut out_buf = vec![0u8; get_output_size(input.len(), 0)];
-        let mut output = MutBuffer {
-            data: out_buf.as_mut_ptr(),
-            size: out_buf.len(),
-        };
-        let ret = unsafe {
-            encrypt(
-                ConstBuffer {
-                    data: key.as_ptr(),
-                    size: key.len(),
-                },
-                ConstBuffer {
-                    data: input.as_ptr(),
-                    size: input.len(),
-                },
-                &mut output,
-            )
-        };
-        assert_eq!(ret, 0);
-        out_buf.truncate(output.size);
-        out_buf
-    }
-
-    fn run_decrypt(key: &[u8], input: &[u8]) -> Vec<u8> {
-        let mut out_buf = vec![0u8; get_output_size(input.len(), 0)];
-        let mut output = MutBuffer {
-            data: out_buf.as_mut_ptr(),
-            size: out_buf.len(),
-        };
-        let ret = unsafe {
-            decrypt(
-                ConstBuffer {
-                    data: key.as_ptr(),
-                    size: key.len(),
-                },
-                ConstBuffer {
-                    data: input.as_ptr(),
-                    size: input.len(),
-                },
-                &mut output,
-            )
-        };
-        assert_eq!(ret, 0);
-        out_buf.truncate(output.size);
-        out_buf
-    }
-
-    #[test]
-    fn encrypt_decrypt_roundtrip() {
-        let key = b"0123456789abcdef0123456789abcdef";
-        let plaintext = b"AAAAAAAAAAA world";
-
-        let ciphertext = run_encrypt(key, plaintext);
-        let decrypted = run_decrypt(key, &ciphertext);
-
-        assert_eq!(decrypted, plaintext);
-    }
 }
