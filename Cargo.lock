@@ -38,6 +38,7 @@ name = "hc128"
 version = "0.1.0"
 dependencies = [
  "common",
+ "getrandom",
 ]
 
 [[package]]
