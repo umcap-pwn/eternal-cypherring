@@ -14,7 +14,7 @@ struct TriviumState {
 pub extern "C" fn get_output_size(input_size: usize, operation_type: i32) -> usize {
     match operation_type {
         0 => input_size + TRIVIUM_IV_SIZE,
-        _ => input_size - TRIVIUM_IV_SIZE,
+        _ => input_size.saturating_sub(TRIVIUM_IV_SIZE),
     }
 }
 
@@ -69,6 +69,10 @@ pub unsafe extern "C" fn decrypt(
     input: ConstBuffer,
     output: *mut MutBuffer,
 ) -> i32 {
+    if input.size < TRIVIUM_IV_SIZE {
+        return 1;
+    }
+
     let data: &[u8] = unsafe {
         slice::from_raw_parts(
             input.data.add(TRIVIUM_IV_SIZE),

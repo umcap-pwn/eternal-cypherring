@@ -9,7 +9,7 @@ const S_BOX_SIZE: usize = 256;
 pub extern "C" fn get_output_size(input_size: usize, operation_type: i32) -> usize {
     match operation_type {
         0 => input_size + RC4_IV_SIZE,
-        _ => input_size - RC4_IV_SIZE,
+        _ => input_size.saturating_sub(RC4_IV_SIZE),
     }
 }
 
@@ -61,6 +61,10 @@ pub unsafe extern "C" fn decrypt(
     input: ConstBuffer,
     output: *mut MutBuffer,
 ) -> i32 {
+    if input.size < RC4_IV_SIZE {
+        return 1;
+    }
+
     let data: &[u8] =
         unsafe { slice::from_raw_parts(input.data.add(RC4_IV_SIZE), input.size - RC4_IV_SIZE) };
     let key: &[u8] = unsafe { slice::from_raw_parts(key.data, key.size) };

@@ -158,7 +158,7 @@ fn hc128_process(state: &mut Hc128State, data: &[u8]) -> Vec<u8> {
 pub extern "C" fn get_output_size(input_size: usize, operation_type: i32) -> usize {
     match operation_type {
         0 => input_size + IV_SIZE,
-        _ => input_size - IV_SIZE,
+        _ => input_size.saturating_sub(IV_SIZE),
     }
 }
 
@@ -214,6 +214,10 @@ pub unsafe extern "C" fn decrypt(
     input: ConstBuffer,
     output: *mut MutBuffer,
 ) -> i32 {
+    if input.size < IV_SIZE {
+        return 1;
+    }
+
     let iv: &[u8; IV_SIZE] = unsafe { slice::from_raw_parts(input.data, IV_SIZE) }
         .try_into()
         .expect("invalid IV size");

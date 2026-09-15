@@ -78,6 +78,25 @@ mod tests {
         assert!(load_algorithm("definitely-not-a-cipher").is_err());
     }
 
+    #[test]
+    fn decrypt_rejects_short_input() {
+        let cases: [(&str, &[u8]); 3] = [
+            ("rc4", &[0x11; 32]),
+            ("trivium", &[0x22; 10]),
+            ("hc128", &[0x33; 16]),
+        ];
+
+        for (name, key) in cases {
+            let cipher = load(name);
+            let short = [0u8; 4];
+
+            assert!(
+                cipher.decrypt(key, &short).is_err(),
+                "{name}: decrypting input shorter than the IV must fail"
+            );
+        }
+    }
+
     fn hc128_keystream(key: &[u8; 16], iv: &[u8; 16], size: usize) -> Vec<u8> {
         let cipher = load("hc128");
 
