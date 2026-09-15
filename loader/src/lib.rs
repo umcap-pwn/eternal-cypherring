@@ -129,6 +129,7 @@ pub fn load_algorithm(name: &str) -> Result<Cipher, Box<dyn Error>> {
         candidates.push(dir.join(&filename));
         if let Some(parent) = dir.parent() {
             candidates.push(parent.join(&filename));
+            candidates.push(parent.join("lib").join(&filename));
         }
     }
 
