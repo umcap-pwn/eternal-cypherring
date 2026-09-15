@@ -147,7 +147,7 @@ fn parse_args() -> Result<Option<Args>, Box<dyn Error>> {
                     Some("encrypt") => Mode::Encrypt,
                     Some("decrypt") => Mode::Decrypt,
                     Some("gen-key") => Mode::GenerateKey,
-                    _ => return Ok(None),
+                    _ => return Err("--mode must be one of: encrypt, decrypt, gen-key".into()),
                 })
             }
             Long("key") | Short('k') => {
@@ -162,7 +162,7 @@ fn parse_args() -> Result<Option<Args>, Box<dyn Error>> {
             Long("save-key") | Short('s') => {
                 save_key = Some(parser.value()?.parse()?);
             }
-            _ => return Ok(None),
+            other => return Err(other.unexpected().into()),
         };
     }
 
@@ -170,7 +170,6 @@ fn parse_args() -> Result<Option<Args>, Box<dyn Error>> {
     let mode = mode.ok_or("missing required option --mode")?;
 
     let ret = Args {
-        // TODO: wrong args handling
         algorithm: algorithm,
         mode: mode,
         key_source: key_source.unwrap_or(KeySource::Generate),
