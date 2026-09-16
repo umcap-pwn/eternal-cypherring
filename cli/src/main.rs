@@ -72,7 +72,7 @@ fn dispatch(args: Args) -> Result<(), Box<dyn Error>> {
 fn write_key(args: &Args, key: &[u8]) -> Result<(), Box<dyn Error>> {
     match &args.save_key {
         Some(path) => std::fs::write(path, key)?,
-        None => todo!("Key input/output via stdin is not implemented yet! Use files."),
+        None => return Err("no key output file; use --save-key <FILE>".into()),
     }
     Ok(())
 }
@@ -105,12 +105,9 @@ fn run_crypto(args: &Args, encrypt: bool) -> Result<(), Box<dyn Error>> {
             t
         }
     };
-    assert!(
-        key.len() == key_size,
-        "Provided key is not valid: expected {} bytes, found {}",
-        key_size,
-        key.len()
-    );
+    if key.len() != key_size {
+        return Err(format!("provided key is {} bytes, expected {key_size}", key.len()).into());
+    }
 
     let res = if encrypt {
         cipher.encrypt(&key, &input)
