@@ -26,7 +26,6 @@ enum Mode {
 
 enum KeySource {
     File(PathBuf),
-    //     Stdin,
     Generate,
 }
 
@@ -89,7 +88,8 @@ fn run_crypto(args: &Args, encrypt: bool) -> Result<(), Box<dyn Error>> {
     let input = match &args.input {
         DataSource::File(path) => std::fs::read(path)?,
         DataSource::Stdin => {
-            println!("Enter text to encrypt, then press ^D to continue: ");
+            let action = if encrypt { "encrypt" } else { "decrypt" };
+            println!("Enter text to {action}, then press ^D to continue: ");
             let mut input = Vec::new();
             std::io::stdin().read_to_end(&mut input)?;
             input
@@ -117,7 +117,7 @@ fn run_crypto(args: &Args, encrypt: bool) -> Result<(), Box<dyn Error>> {
 
     match &args.output {
         DataDest::File(path) => std::fs::write(path, res)?,
-        DataDest::Stdout => write_output(&args, &res)?,
+        DataDest::Stdout => write_stdout(&args, &res)?,
     };
 
     Ok(())
@@ -212,10 +212,10 @@ fn print_help() {
         Options:
           -a, --algorithm <ALGORITHM>   Cipher to use: rc4, trivium, hc128
           -m, --mode <MODE>             Mode: encrypt, decrypt, gen-key
-          -k, --key <FILE>              Read key from FILE (default: stdin)
+          -k, --key <FILE>              Read key from FILE (default: generate one)
           -i, --input <FILE>            Read input from FILE (default: stdin)
           -o, --output <FILE>           Write output to FILE (default: stdout)
-          -s, --save-key <FILE>         Write generated key to FILE
+          -s, --save-key <FILE>         Write generated key to FILE (required when generating)
           -h, --help                    Show this help
 
         Examples:
@@ -226,20 +226,12 @@ fn print_help() {
     )
 }
 
-fn write_output(args: &Args, data: &[u8]) -> Result<(), Box<dyn Error>> {
-    match &args.output {
-        DataDest::File(path) => {
-            std::fs::write(path, data)?;
-        }
-        DataDest::Stdout => {
-            let stdout = std::io::stdout();
-            if stdout.is_terminal() && !(args.mode == Mode::Decrypt) {
-                return Err(
-                    "refusing to write binary data to a terminal; use -o FILE or redirect".into(),
-                );
-            }
-            stdout.lock().write_all(data)?;
-        }
+fn write_stdout(args: &Args, data: &[u8]) -> Result<(), Box<dyn Error>> {
+    let stdout = std::io::stdout();
+    if stdout.is_terminal() && !(args.mode == Mode::Decrypt) {
+        return Err("refusing to write binary data to a terminal; use -o FILE or redirect".into());
     }
+
+    stdout.lock().write_all(data)?;
     Ok(())
 }
