@@ -85,8 +85,6 @@ fn hc128_init(state: &mut Hc128State, key: &[u8; KEY_SIZE], iv: &[u8; IV_SIZE]) 
     }
 }
 
-/// Runs the cipher 1024 steps without producing keystream: the outputs are
-/// folded back into P and Q.
 fn hc128_warmup_step(state: &mut Hc128State) {
     let j = state.counter & 511;
 
