@@ -204,24 +204,24 @@ fn validate(args: &Args) -> Result<(), String> {
 fn print_help() {
     println!(
         "\
-        eternal-cypherring — educational stream cipher CLI
+eternal-cypherring — educational stream cipher CLI
 
-        Usage:
-          etc -a <ALGORITHM> -m <MODE> [OPTIONS]
+Usage:
+etc -a <ALGORITHM> -m <MODE> [OPTIONS]
 
-        Options:
-          -a, --algorithm <ALGORITHM>   Cipher to use: rc4, trivium, hc128
-          -m, --mode <MODE>             Mode: encrypt, decrypt, gen-key
-          -k, --key <FILE>              Read key from FILE (default: generate one)
-          -i, --input <FILE>            Read input from FILE (default: stdin)
-          -o, --output <FILE>           Write output to FILE (default: stdout)
-          -s, --save-key <FILE>         Write generated key to FILE (required when generating)
-          -h, --help                    Show this help
+Options:
+    -a, --algorithm <ALGORITHM>   Cipher to use: rc4, trivium, hc128
+    -m, --mode <MODE>             Mode: encrypt, decrypt, gen-key
+    -k, --key <FILE>              Read key from FILE (default: generate one)
+    -i, --input <FILE>            Read input from FILE (default: stdin)
+    -o, --output <FILE>           Write output to FILE (default: stdout)
+    -s, --save-key <FILE>         Write generated key to FILE (required when generating)
+    -h, --help                    Show this help
 
-        Examples:
-          etc -a rc4 -m gen-key -s key.bin
-          etc -a rc4 -m encrypt -k key.bin -i plain.txt -o cipher.bin
-          etc -a rc4 -m decrypt -k key.bin -i cipher.bin -o plain.dec
+Examples:
+    etc -a rc4 -m gen-key -s key.bin
+    etc -a rc4 -m encrypt -k key.bin -i plain.txt -o cipher.bin
+    etc -a rc4 -m decrypt -k key.bin -i cipher.bin -o plain.dec
 "
     )
 }
