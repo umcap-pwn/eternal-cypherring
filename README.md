@@ -30,10 +30,14 @@ cargo test -p tests -- --ignored     # long HC-128 test vector
 ## Install
 
 ```
-make install                         # PREFIX=/usr/local by default
-make install PREFIX=~/.local
-make uninstall
+make release                         # build as your user (cargo lives in ~/.cargo/bin)
+sudo make install                    # then install as root; PREFIX=/usr/local by default
+make install PREFIX=~/.local         # no sudo needed for a user-local prefix
+sudo make uninstall
 ```
+
+The install target only copies files, so the release build must be done first
+as a regular user.
 
 The ciphers are installed as shared libraries into `$(PREFIX)/lib`, the CLI into
 `$(PREFIX)/bin`; `etc` finds them next to itself at runtime.

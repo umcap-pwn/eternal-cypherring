@@ -6,16 +6,25 @@ LIBDIR ?= $(PREFIX)/lib
 
 ALGORITHMS = rc4 trivium hc128
 
-.PHONY: build test install uninstall
+.PHONY: build release test install uninstall clean
 
+clean: 
+	cargo clean
 build:
 	cargo build --workspace
+
+release:
+	cargo build --release --workspace
 
 test: build
 	cargo test -p tests
 
+# Build artifacts as a regular user (`make release`), then install as root
+# (`sudo make install`): root has no cargo/rustup in PATH, so the install
+# target only copies files and never invokes the toolchain.
 install:
-	cargo build --release --workspace
+	@test -x target/release/etc || { \
+		echo "error: release artifacts missing - run 'make release' as your user first" >&2; exit 1; }
 	install -d $(DESTDIR)$(BINDIR)
 	install -m 0755 target/release/etc $(DESTDIR)$(BINDIR)/etc
 	install -d $(DESTDIR)$(LIBDIR)
